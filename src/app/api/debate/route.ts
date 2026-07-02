@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamChat } from "@/lib/openrouter";
+import { resolveApiKey, streamChat } from "@/lib/openrouter";
 import {
   buildParticipantPrompt,
   buildModeratorPrompt,
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { apiKey, mode, topic, knowledge, moderatorModel, participants, activeIds, threshold, transcript } =
-    body;
+  const { mode, topic, knowledge, moderatorModel, participants, activeIds, threshold, transcript } = body;
 
+  const apiKey = resolveApiKey(body.apiKey);
   if (!apiKey) return new Response("Missing API key", { status: 400 });
   if (!participants?.length) return new Response("No participants", { status: 400 });
 

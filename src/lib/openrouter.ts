@@ -5,6 +5,11 @@ import type { OpenRouterModel } from "./types";
 
 const BASE = "https://openrouter.ai/api/v1";
 
+/** Client-provided key, falling back to the server-configured one (OPENROUTER_API_KEY). */
+export function resolveApiKey(clientKey?: string | null): string {
+  return clientKey || process.env.OPENROUTER_API_KEY || "";
+}
+
 function headers(apiKey: string): HeadersInit {
   return {
     Authorization: `Bearer ${apiKey}`,

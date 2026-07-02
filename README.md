@@ -27,6 +27,20 @@ participants + moderator, set the confidence threshold, write your topic, and **
 The key is stored only in your browser (`localStorage`) and is sent straight to OpenRouter
 through the app's API routes — never persisted or logged server-side.
 
+### Deploy with a server-side key
+
+Hosting Dialectic for yourself or your team (Railway, Vercel, Docker…)? Set:
+
+```
+OPENROUTER_API_KEY=sk-or-...
+```
+
+The app detects the server key on load, skips the key prompt, and uses it for every request.
+A key pasted in the browser still takes precedence, so visitors can bring their own.
+
+Heads up: with a server key set, anyone who can reach your deployment spends your OpenRouter
+credits — keep the URL private or put auth in front of it.
+
 ## Personas: roles and skills
 
 Each participant can be more than a bare model — give it a **role** and **skills**:

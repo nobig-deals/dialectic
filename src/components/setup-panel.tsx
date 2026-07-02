@@ -33,6 +33,7 @@ const NO_ROLE = "__none__";
 
 export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => void; busy: boolean }) {
   const [apiKey, setApiKey] = useState("");
+  const [serverKey, setServerKey] = useState(false);
   const [models, setModels] = useState<OpenRouterModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -58,8 +59,7 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
   }, []);
 
   const loadModels = useCallback(
-    async (key: string) => {
-      if (!key) return;
+    async (key: string, opts?: { silent?: boolean }) => {
       setLoading(true);
       try {
         const res = await fetch("/api/models", { headers: { "x-openrouter-key": key } });
@@ -67,9 +67,10 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
         if (!res.ok) throw new Error(json.error ?? "Failed to load models");
         const list: OpenRouterModel[] = json.models;
         setModels(list);
-        toast.success(`${list.length} models loaded`);
+        if (!key) setServerKey(true); // empty key worked → server has OPENROUTER_API_KEY
+        if (!opts?.silent) toast.success(`${list.length} models loaded`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to load models");
+        if (!opts?.silent) toast.error(err instanceof Error ? err.message : "Failed to load models");
       } finally {
         setLoading(false);
       }
@@ -77,9 +78,9 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
     [],
   );
 
-  // Auto-load once if a key was restored.
+  // Auto-load once: with the restored key, or with none to probe for a server-side key.
   useEffect(() => {
-    if (apiKey && models.length === 0) void loadModels(apiKey);
+    if (models.length === 0) void loadModels(apiKey, { silent: !apiKey });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey]);
 
@@ -113,7 +114,7 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
   };
 
   const start = () => {
-    if (!apiKey) return toast.error("Enter your OpenRouter API key");
+    if (!apiKey && !serverKey) return toast.error("Enter your OpenRouter API key");
     if (selected.length < 2) return toast.error("Pick at least 2 models");
     if (!topic.trim()) return toast.error("Describe your topic first");
     const mod = moderator && selected.includes(moderator) ? moderator : selected[0];
@@ -149,7 +150,7 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
               <Input
                 id="key"
                 type="password"
-                placeholder="sk-or-…"
+                placeholder={serverKey ? "using server key" : "sk-or-…"}
                 value={apiKey}
                 autoComplete="off"
                 className="pl-9"
@@ -159,13 +160,20 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
                 }}
               />
             </div>
-            <Button variant="outline" onClick={() => loadModels(apiKey)} disabled={!apiKey || loading}>
+            <Button
+              variant="outline"
+              onClick={() => loadModels(apiKey)}
+              disabled={(!apiKey && !serverKey) || loading}
+            >
               {loading ? <Spinner /> : <RefreshCwIcon />}
               {models.length ? "Reload" : "Load models"}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Stored only in your browser. {models.length > 0 && `${models.length} models available.`}
+            {serverKey && !apiKey
+              ? "This deployment has a server-side key — no key needed."
+              : "Stored only in your browser."}{" "}
+            {models.length > 0 && `${models.length} models available.`}
           </p>
         </div>
 
