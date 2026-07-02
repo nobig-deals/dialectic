@@ -13,6 +13,14 @@ import type { Participant, Round } from "@/lib/types";
  * round show their fresh response; models that sat out carry over their most
  * recent prior answer (marked `settled`) so every round shows the full roster.
  */
+/** Model id + skill names shown next to the display name (which is the role name when a role is set). */
+function personaOf(p: Participant): Pick<ModelRow, "model" | "skills"> {
+  return {
+    model: p.roleId ? p.model : undefined,
+    skills: p.skills?.length ? p.skills.map((s) => s.name) : undefined,
+  };
+}
+
 function rowsFrom(round: Round, participants: Participant[], allRounds: Round[]): ModelRow[] {
   return participants.map((p, index) => {
     const fresh = round.responses.find((r) => r.id === p.id);
@@ -21,6 +29,7 @@ function rowsFrom(round: Round, participants: Participant[], allRounds: Round[])
         id: fresh.id,
         index,
         name: fresh.name,
+        ...personaOf(p),
         prose: fresh.prose,
         confidence: fresh.meta.confidence,
         challenges: fresh.meta.challenges,
@@ -39,6 +48,7 @@ function rowsFrom(round: Round, participants: Participant[], allRounds: Round[])
       id: p.id,
       index,
       name: prior?.name ?? p.name,
+      ...personaOf(p),
       prose: prior?.prose ?? "",
       confidence: prior?.meta.confidence ?? null,
       challenges: [],
@@ -150,6 +160,7 @@ export function DebateView({ session }: { session: Session }) {
                   id: p.id,
                   index,
                   name: p.name,
+                  ...personaOf(p),
                   prose: liveProse(session.live!, p.id),
                   confidence: done ? done.meta.confidence : null,
                   challenges: done ? done.meta.challenges : [],
@@ -164,6 +175,7 @@ export function DebateView({ session }: { session: Session }) {
                 id: p.id,
                 index,
                 name: prior?.name ?? p.name,
+                ...personaOf(p),
                 prose: prior?.prose ?? "",
                 confidence: prior?.meta.confidence ?? null,
                 challenges: [],

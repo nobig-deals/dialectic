@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { KeyRoundIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react";
+import { KeyRoundIcon, RefreshCwIcon, RotateCcwIcon, SparklesIcon, XIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +104,23 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
 
   const modelName = (id: string) => models.find((m) => m.id === id)?.name ?? id;
 
+  const resetAll = () => {
+    try {
+      for (const k of Object.values(LS)) localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
+    setApiKey("");
+    setSelected([]);
+    setModerator("");
+    setThreshold(85);
+    setTopic("");
+    setKnowledge("");
+    setPersonas({});
+    if (!serverKey) setModels([]);
+    toast.success("Setup cleared");
+  };
+
   const setPersona = (modelId: string, patch: Partial<Persona>) => {
     setPersonas((prev) => {
       const base: Persona = prev[modelId] ?? { skills: [] };
@@ -137,6 +154,16 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <SparklesIcon className="size-4 text-primary" /> New debate
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto text-muted-foreground"
+            onClick={resetAll}
+            disabled={busy}
+            title="Clear saved key, models, topic and personas"
+          >
+            <RotateCcwIcon /> Reset
+          </Button>
         </CardTitle>
         <CardDescription>Drop an idea. Pick models. Let them argue it into a document.</CardDescription>
       </CardHeader>
@@ -192,7 +219,7 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
                         <XIcon className="size-3.5" />
                       </button>
                     </div>
-                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start">
                       <Select
                         value={persona.roleId ?? NO_ROLE}
                         onValueChange={(v: string | null) =>

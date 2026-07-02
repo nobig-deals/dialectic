@@ -12,6 +12,10 @@ export type ModelRow = {
   id: string;
   index: number;
   name: string;
+  /** OpenRouter model id, shown when `name` is a role name so the model stays visible. */
+  model?: string;
+  /** Names of skills attached to this persona. */
+  skills?: string[];
   prose: string;
   confidence: number | null;
   challenges: Challenge[];
@@ -76,7 +80,17 @@ export function ModelAccordion({ rows, defaultOpen }: { rows: ModelRow[]; defaul
             </span>
 
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm font-medium">{r.name}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate text-sm font-medium">{r.name}</span>
+                {r.model && (
+                  <span className="truncate font-mono text-xs font-normal text-muted-foreground">{r.model}</span>
+                )}
+                {r.skills?.map((s) => (
+                  <Badge key={s} variant="outline" className="hidden h-4.5 shrink-0 px-1.5 text-[10px] font-normal text-muted-foreground sm:inline-flex">
+                    {s}
+                  </Badge>
+                ))}
+              </span>
               {r.settled ? (
                 <span className="truncate text-xs font-normal text-muted-foreground">No further comment · answer carried over</span>
               ) : (

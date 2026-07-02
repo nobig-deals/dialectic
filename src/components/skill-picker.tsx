@@ -79,7 +79,7 @@ export function SkillPicker({ skills, onChange, disabled }: Props) {
   const remove = (id: string) => onChange(skills.filter((s) => s.id !== id));
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           disabled={disabled}
@@ -137,31 +137,27 @@ export function SkillPicker({ skills, onChange, disabled }: Props) {
         </PopoverContent>
       </Popover>
 
-      {skills.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {skills.map((s) => (
-            <Badge key={s.id} variant="outline" className="gap-1 pr-1 font-normal">
-              <HoverCard>
-                <HoverCardTrigger render={<span className="cursor-help" />}>{s.name}</HoverCardTrigger>
-                <HoverCardContent className="w-96 max-h-80 overflow-y-auto text-xs" align="start">
-                  <p className="mb-1 font-medium">{s.source}</p>
-                  <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
-                    {s.content.slice(0, 1200)}
-                    {s.content.length > 1200 ? "…" : ""}
-                  </pre>
-                </HoverCardContent>
-              </HoverCard>
-              <button
-                onClick={() => remove(s.id)}
-                className="rounded-full p-0.5 hover:bg-foreground/10"
-                aria-label={`Remove skill ${s.name}`}
-              >
-                <XIcon className="size-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
+      {skills.map((s) => (
+        <Badge key={s.id} variant="outline" className="h-8 gap-1 pr-1.5 font-normal">
+          <HoverCard>
+            <HoverCardTrigger render={<span className="cursor-help" />}>{s.name}</HoverCardTrigger>
+            <HoverCardContent className="w-96 max-h-80 overflow-y-auto text-xs" align="start">
+              <p className="mb-1 font-medium">{s.source}</p>
+              <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
+                {s.content.slice(0, 1200)}
+                {s.content.length > 1200 ? "…" : ""}
+              </pre>
+            </HoverCardContent>
+          </HoverCard>
+          <button
+            onClick={() => remove(s.id)}
+            className="rounded-full p-0.5 hover:bg-foreground/10"
+            aria-label={`Remove skill ${s.name}`}
+          >
+            <XIcon className="size-3" />
+          </button>
+        </Badge>
+      ))}
     </div>
   );
 }
