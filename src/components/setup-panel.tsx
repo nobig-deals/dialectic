@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { KeyRoundIcon, RefreshCwIcon, RotateCcwIcon, SparklesIcon, XIcon } from "lucide-react";
+import { InfoIcon, KeyRoundIcon, RefreshCwIcon, RotateCcwIcon, SparklesIcon, XIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ModelPicker } from "@/components/model-picker";
 import { SkillPicker } from "@/components/skill-picker";
 import { ROLES, getRole } from "@/lib/roles";
@@ -207,6 +208,7 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
             <div className="flex flex-col gap-2 pt-1">
               {selected.map((id) => {
                 const persona = personas[id] ?? { skills: [] };
+                const role = getRole(persona.roleId);
                 return (
                   <div key={id} className="flex flex-col gap-2 rounded-lg border border-border/60 p-3">
                     <div className="flex items-center justify-between gap-2">
@@ -238,6 +240,27 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
                           ))}
                         </SelectContent>
                       </Select>
+                      {role && (
+                        <HoverCard>
+                          <HoverCardTrigger
+                            render={
+                              <button
+                                type="button"
+                                className="flex h-8 shrink-0 cursor-help items-center rounded-md px-1 text-muted-foreground hover:text-foreground"
+                                aria-label={`Show the ${role.name} role prompt`}
+                              />
+                            }
+                          >
+                            <InfoIcon className="size-3.5" />
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-96 text-xs" align="start">
+                            <p className="mb-1 font-medium">
+                              {role.name} — {role.blurb}
+                            </p>
+                            <p className="text-muted-foreground">{role.persona}</p>
+                          </HoverCardContent>
+                        </HoverCard>
+                      )}
                       <SkillPicker
                         skills={persona.skills}
                         onChange={(skills) => setPersona(id, { skills })}
