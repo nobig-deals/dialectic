@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dialectic
 
-## Getting Started
+**Local-first, open-source multi-model LLM debate orchestrator.**
 
-First, run the development server:
+_Thesis. Antithesis. Synthesis. In one tool._
+
+Drop an idea, pick 2–10 models from OpenRouter, and let them debate it. Each round every
+active model answers and rates its own confidence (0–100); a moderator model synthesizes the
+round, decides who keeps going (confident + unchallenged models drop out — the field can
+narrow to two), pauses to ask you when the models need input, and writes the final **MMDD**
+(Multi-Model Debate Document) when the debate converges.
+
+Dialectic isn't another multi-chat. It's a sandbox for running an actual dialectic between
+models — adversarial rounds in, one carefully synthesized document out.
+
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000, paste your **OpenRouter API key** (get one at
+[openrouter.ai/keys](https://openrouter.ai/keys)), click **Load models**, pick your
+participants + moderator, set the confidence threshold, write your topic, and **Start debate**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The key is stored only in your browser (`localStorage`) and is sent straight to OpenRouter
+through the app's API routes — never persisted or logged server-side.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Personas: roles and skills
 
-## Learn More
+Each participant can be more than a bare model — give it a **role** and **skills**:
 
-To learn more about Next.js, take a look at the following resources:
+- **Role** — pick a preset persona (CFO, CEO, CTO, Legal Counsel, Board Member…) from the
+  dropdown under each model. The role's point of view is injected into that model's system
+  prompt and shown to the others in the roster, so you can run a boardroom-style debate.
+- **Skills** — search the [skills.sh](https://skills.sh) catalogue and attach one or more
+  skills to a persona. The skill's `SKILL.md` is fetched and prepended to the model's prompt.
+  Hover an attached skill to preview its content.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Roles live in `src/lib/roles.ts` (pure preset data). Skills use the **free**, no-token path:
+`https://skills.sh/api/search` for discovery and public GitHub raw for content — no Vercel
+OIDC token needed. Both go through server proxy routes (`/api/skills/*`) which cache resolved
+content in-memory (GitHub's unauthenticated API allows 60 req/hr; set `GITHUB_TOKEN` to raise
+it). Skill content is resolved once when you add a skill and stored with the debate config, so
+running a debate needs no further network calls.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How it works
 
-## Deploy on Vercel
+Models emit prose, then a `<<<META>>>` block of JSON (`confidence`, `questionsForUser`,
+`challenges`). Prose streams live; the meta block is parsed when each reply completes. The
+orchestrator then decides: pause (questions for you) → finalize (converged) → continue (next
+active set).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `src/lib/openrouter.ts` — thin OpenRouter client: `listModels` + token-streaming `streamChat`.
+- `src/lib/roles.ts` — curated role presets (`{ id, name, persona }`), injected by `protocol.ts`.
+- `src/lib/skills.ts` — skills.sh search + GitHub `SKILL.md` resolution (pure `matchSkillPath` /
+  `stripFrontmatter` helpers + cached `resolveSkillContent`), used by `/api/skills/*` routes.
+- `src/lib/protocol.ts` — pure prompt builders + reply parsing (the `<<<META>>>` protocol).
+- `src/lib/orchestrator.ts` — pure decision logic: pause → finalize → continue.
+- `src/app/api/debate/route.ts` — runs one round (all active models concurrently) + the
+  moderator, or the final document, streaming everything as SSE tagged per model.
+- `src/lib/use-debate.ts` — client hook driving the round loop, stop / resume-with-answer /
+  interject / finalize-now.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Controls
+
+- **Stop** — halt mid-round.
+- **Interject** — inject your own comment between rounds; the models see it next round.
+- **Finalize** — force the moderator to write the MMDD from what's been said so far.
+- Paused rounds show the models' questions; answer them and the chain continues.
+
+## The output: MMDD
+
+The debate ends in one document — the **MMDD** (Multi-Model Debate Document): the moderator's
+synthesis of every surviving argument, weighted by confidence and stress-tested by the
+challenges the models threw at each other. Copy it or download it as Markdown.
+
+State is in-memory only — a refresh starts fresh.
