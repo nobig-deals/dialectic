@@ -13,6 +13,8 @@ narrow to two), pauses to ask you when the models need input, and writes the fin
 Dialectic isn't another multi-chat. It's a sandbox for running an actual dialectic between
 models — adversarial rounds in, one carefully synthesized document out.
 
+![A debate in progress: three models with roles (CMO, Content Creator, Head of Sales) argue a topic, the moderator synthesizes the round and lists the key conflicts, and the models pause to ask the user questions before continuing.](docs/screenshot-debate.png)
+
 ## Run it
 
 ```bash
