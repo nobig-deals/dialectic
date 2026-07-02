@@ -105,7 +105,8 @@ export type Decision = {
 /** Request body for POST /api/debate. */
 export type DebateRequest = {
   apiKey: string;
-  mode: "round" | "final";
+  /** "round" runs participants + moderator; "moderate" re-runs only the moderator on the last round; "final" writes the document. */
+  mode: "round" | "final" | "moderate";
   topic: string;
   knowledge: string; // optional reference material the user pasted (e.g. an .md file)
   moderatorModel: string;

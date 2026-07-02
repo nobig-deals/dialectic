@@ -301,13 +301,113 @@ export function useDebate() {
     });
   }, [runFinal, setSession]);
 
+  /**
+   * Re-run only the moderator on the last round, optionally with a different model.
+   * Also rescues a round stuck mid-moderation: aborts the stream, commits the
+   * participants' finished answers as a round, then moderates that.
+   */
+  const remoderate = useCallback(
+    (model?: string) => {
+      const cfg = ref.current.config;
+      if (!cfg) return;
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      stoppedRef.current = false;
+
+      const nextCfg = model ? { ...cfg, moderatorModel: model } : cfg;
+
+      // Commit any in-flight live round (participants that finished keep their answers).
+      setSession((s) => {
+        let rounds = s.rounds;
+        if (s.live) {
+          const live = s.live;
+          const responses: ParticipantResponse[] = live.activeIds.map(
+            (id) =>
+              live.done[id] ?? {
+                id,
+                model: cfg.participants.find((p) => p.id === id)?.model ?? "",
+                name: cfg.participants.find((p) => p.id === id)?.name ?? id,
+                prose: splitMeta(live.raw[id] ?? "").prose,
+                meta: { confidence: 0, questionsForUser: [], challenges: [] },
+                error: live.raw[id] ? undefined : "incomplete",
+              },
+          );
+          if (responses.some((r) => r.prose)) {
+            rounds = [...rounds, { index: live.index, responses, moderator: null }];
+          }
+        }
+        return { ...s, config: nextCfg, rounds, live: null, status: "running", error: null };
+      });
+
+      if (!ref.current.rounds.length) {
+        setSession((s) => ({ ...s, status: "stopped", error: "No completed round to moderate" }));
+        return;
+      }
+
+      const setLastModerator = (turn: ModeratorTurn | null) =>
+        setSession((s) => {
+          const rounds = s.rounds.slice();
+          rounds[rounds.length - 1] = { ...rounds[rounds.length - 1], moderator: turn };
+          return { ...s, rounds };
+        });
+
+      void (async () => {
+        const payload: DebateRequest = {
+          apiKey: nextCfg.apiKey,
+          mode: "moderate",
+          topic: nextCfg.topic,
+          knowledge: nextCfg.knowledge,
+          moderatorModel: nextCfg.moderatorModel,
+          participants: nextCfg.participants,
+          activeIds: [],
+          threshold: nextCfg.threshold,
+          transcript: ref.current.rounds,
+        };
+        try {
+          let decision: Decision | null = null;
+          let modText = "";
+          let turn: ModeratorTurn | null = null;
+          await streamEvents(payload, abortRef.current!.signal, (ev) => {
+            switch (ev.type) {
+              case "mod-token":
+                modText += ev.text;
+                setLastModerator({
+                  summary: modText,
+                  meta: { activeNext: [], instructions: {}, questionsForUser: [], finalize: false },
+                });
+                break;
+              case "moderator":
+                turn = ev.moderator;
+                setLastModerator(ev.moderator);
+                break;
+              case "decision":
+                decision = ev.decision;
+                break;
+              case "error":
+                setSession((s) => ({ ...s, error: ev.message }));
+                break;
+            }
+          });
+          if (!turn) setLastModerator(null); // stream ended without a parsed turn — leave it retryable
+          if (stoppedRef.current) return;
+          applyDecision(decision);
+          if (!decision) setSession((s) => ({ ...s, status: "stopped" }));
+        } catch (err) {
+          if ((err as Error)?.name === "AbortError") return;
+          setSession((s) => ({ ...s, status: "error", error: (err as Error)?.message ?? "Failed" }));
+        }
+      })();
+    },
+    [applyDecision, setSession],
+  );
+
   const reset = useCallback(() => {
     stoppedRef.current = true;
     abortRef.current?.abort();
     setSession(initial);
   }, [setSession]);
 
-  return { session, start, stop, answer, interject, continueRound, finalizeNow, reset };
+  return { session, start, stop, answer, interject, continueRound, finalizeNow, remoderate, reset };
 }
 
 /** POST to /api/debate and dispatch each SSE event to the handler. */

@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function Home() {
-  const { session, start, stop, answer, interject, continueRound, finalizeNow, reset } = useDebate();
+  const { session, start, stop, answer, interject, continueRound, finalizeNow, remoderate, reset } = useDebate();
   const { status } = session;
   const active = status !== "idle";
 
@@ -79,7 +79,7 @@ export default function Home() {
 
             {status === "paused" && <UserPrompt questions={session.pendingQuestions} onAnswer={answer} />}
 
-            <DebateView session={session} />
+            <DebateView session={session} onRemoderate={remoderate} />
 
             {(status === "finalizing" || status === "done") && (
               <FinalDoc document={session.finalDoc} streaming={status === "finalizing"} />

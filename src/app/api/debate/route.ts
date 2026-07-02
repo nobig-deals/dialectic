@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
       try {
         if (mode === "final") {
           await runFinal();
+        } else if (mode === "moderate") {
+          await runModerate();
         } else {
           await runRound();
         }
@@ -70,6 +72,15 @@ export async function POST(req: NextRequest) {
         });
       } finally {
         close();
+      }
+
+      // ── Re-run only the moderator over the last committed round ────────────
+      async function runModerate() {
+        const last = transcript[transcript.length - 1];
+        if (!last) throw new Error("Nothing to moderate yet");
+        const moderator = await streamModerator(transcript);
+        const decision = decide({ round: { ...last, moderator }, participants, threshold });
+        send({ type: "decision", decision });
       }
 
       // ── Run a single debate round ──────────────────────────────────────────

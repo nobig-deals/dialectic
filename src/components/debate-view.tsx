@@ -72,11 +72,29 @@ function UserReply({ text }: { text: string }) {
   );
 }
 
-export function DebateView({ session }: { session: Session }) {
+export function DebateView({
+  session,
+  onRemoderate,
+}: {
+  session: Session;
+  onRemoderate?: (model?: string) => void;
+}) {
   const participants = session.config?.participants ?? [];
   const threshold = session.config?.threshold ?? 0;
   const rounds = session.rounds;
   const hasLive = !!session.live;
+
+  const remoderateProps =
+    onRemoderate && session.config
+      ? {
+          model: session.config.moderatorModel,
+          models: [...new Set(participants.map((p) => p.model))],
+          busy: session.status === "running" || session.status === "finalizing",
+          onRun: onRemoderate,
+        }
+      : undefined;
+  // The moderator is being re-run when we're "running" without a live round streaming.
+  const remoderating = session.status === "running" && !hasLive;
 
   // Collapse finished rounds; keep the newest open (or all closed while a round streams).
   const [open, setOpen] = useState<string[]>([]);
@@ -90,6 +108,7 @@ export function DebateView({ session }: { session: Session }) {
       {/* Finished rounds — each collapsible */}
       <Accordion multiple value={open} onValueChange={(v) => setOpen(v as string[])} className="flex flex-col gap-3">
         {rounds.map((round) => {
+          const isLast = !hasLive && round.index === rounds[rounds.length - 1].index;
           const n = round.responses.length;
           const converged = round.responses.filter((r) => r.meta.confidence >= threshold).length;
           const questions =
@@ -125,7 +144,13 @@ export function DebateView({ session }: { session: Session }) {
               </AccordionTrigger>
               <AccordionContent className="px-4">
                 <div className="flex flex-col gap-3 pb-2">
-                  {round.moderator && <ModeratorNote summary={round.moderator.summary} />}
+                  {(round.moderator || (isLast && remoderateProps)) && (
+                    <ModeratorNote
+                      summary={round.moderator?.summary ?? ""}
+                      streaming={isLast && remoderating}
+                      remoderate={isLast ? remoderateProps : undefined}
+                    />
+                  )}
                   <ModelAccordion rows={rowsFrom(round, participants, rounds)} defaultOpen={[]} />
                   {round.userAnswer && <UserReply text={round.userAnswer} />}
                 </div>
@@ -148,6 +173,7 @@ export function DebateView({ session }: { session: Session }) {
             <ModeratorNote
               summary={session.live.moderator?.summary ?? session.live.modText}
               streaming={!session.live.moderator}
+              remoderate={remoderateProps && { ...remoderateProps, busy: false }}
             />
           )}
           <ModelAccordion
