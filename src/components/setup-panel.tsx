@@ -141,41 +141,36 @@ export function SetupPanel({ onStart, busy }: { onStart: (cfg: DebateConfig) => 
         <CardDescription>Drop an idea. Pick models. Let them argue it into a document.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
-        {/* API key */}
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="key">OpenRouter API key</Label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <KeyRoundIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="key"
-                type="password"
-                placeholder={serverKey ? "using server key" : "sk-or-…"}
-                value={apiKey}
-                autoComplete="off"
-                className="pl-9"
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  persist({ key: e.target.value });
-                }}
-              />
+        {/* API key — hidden when the deployment provides one via OPENROUTER_API_KEY */}
+        {!serverKey && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="key">OpenRouter API key</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <KeyRoundIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="key"
+                  type="password"
+                  placeholder="sk-or-…"
+                  value={apiKey}
+                  autoComplete="off"
+                  className="pl-9"
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    persist({ key: e.target.value });
+                  }}
+                />
+              </div>
+              <Button variant="outline" onClick={() => loadModels(apiKey)} disabled={!apiKey || loading}>
+                {loading ? <Spinner /> : <RefreshCwIcon />}
+                {models.length ? "Reload" : "Load models"}
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => loadModels(apiKey)}
-              disabled={(!apiKey && !serverKey) || loading}
-            >
-              {loading ? <Spinner /> : <RefreshCwIcon />}
-              {models.length ? "Reload" : "Load models"}
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Stored only in your browser. {models.length > 0 && `${models.length} models available.`}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {serverKey && !apiKey
-              ? "This deployment has a server-side key — no key needed."
-              : "Stored only in your browser."}{" "}
-            {models.length > 0 && `${models.length} models available.`}
-          </p>
-        </div>
+        )}
 
         {/* Participants */}
         <div className="flex flex-col gap-2">
